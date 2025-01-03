@@ -1,10 +1,15 @@
 package com.afrisol.CustomerService.controller;
 
-import com.afrisol.CustomerService.dto.CustomerRequestDto;
-import com.afrisol.CustomerService.dto.CustomerResponseDto;
+import com.afrisol.CustomerService.dto.CustomerRequest;
+import com.afrisol.CustomerService.dto.CustomerResponse;
+import com.afrisol.CustomerService.exception.CustomerAlreadyExistsException;
 import com.afrisol.CustomerService.service.CustomerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -25,23 +31,38 @@ public class CustomerController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<CustomerResponseDto>> addCustomer(@RequestBody @Valid CustomerRequestDto customerDto) {
+    public Mono<ResponseEntity<CustomerResponse>> addCustomer(@RequestBody @Valid CustomerRequest customerRequest) {
         String requestID = UUID.randomUUID().toString();
-        log.info("Adding customer with phone : {} and requestID {}", customerDto.getPhone(), requestID);
-        return customerService.addCustomer(customerDto, requestID)
-                .map(ResponseEntity::ok);
+        log.info("Adding customer with phone: {} and requestID: {}", customerRequest.getPhone(), requestID);
+
+        return customerService.addCustomer(customerRequest, requestID)
+                .map(customerResponse -> ResponseEntity
+                        .created(URI.create("/customers/" + customerResponse.getCustomerId()))
+                        .body(customerResponse))
+                .onErrorResume(e -> {
+                    if (e instanceof CustomerAlreadyExistsException) {
+                        return Mono.error(e);
+                    }
+                    log.error("Unexpected error adding customer: {}", e.getMessage(), e);
+                    return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+                });
     }
+
     @GetMapping
-    public Flux<CustomerResponseDto> getAllCustomers() {
+    public Flux<CustomerResponse> getAllCustomers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+
+    ) {
         String requestID = UUID.randomUUID().toString();
         log.info("Getting all customers : {}", requestID);
-        return customerService.getAllCustomers(requestID);
+        return customerService.getAllCustomers(page, size,requestID);
     }
-    @GetMapping("/{email}")
-    public Mono<ResponseEntity<CustomerResponseDto>> getCustomer(@PathVariable  @Valid String email) {
+    @GetMapping("/{phoneNumber}")
+    public Mono<ResponseEntity<CustomerResponse>> getCustomer(@PathVariable  @Valid String phoneNumber) {
         String requestID = UUID.randomUUID().toString();
-        log.info("Getting customer with email  : {} and requestID: {}", email, requestID);
-        return customerService.getCustomer(email, requestID)
+        log.info("Getting customer with email  : {} and requestID: {}", phoneNumber, requestID);
+        return customerService.getCustomer(phoneNumber, requestID)
                 .map(ResponseEntity::ok)
                 .onErrorResume(ResponseStatusException.class, ex -> {
                     log.error("Error: {}", ex.getReason());
@@ -55,22 +76,27 @@ public class CustomerController {
     }
 
     @PutMapping("/{customerId}")
-    public Mono<ResponseEntity<CustomerResponseDto>> updateCustomer(
+    public Mono<ResponseEntity<CustomerResponse>> updateCustomer(
             @PathVariable String customerId,
-            @RequestBody @Valid CustomerRequestDto customerDto) {
+            @RequestBody @Valid CustomerRequest customerRequest) {
         String requestID = UUID.randomUUID().toString();
         log.info("Updating customer with ID: {} and requestID {}", customerId, requestID);
-        return customerService.updateCustomer(customerDto, customerId, requestID)
+        return customerService.updateCustomer(customerRequest, customerId, requestID)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
 
+
     @DeleteMapping("/{customerId}")
+    @Operation(summary = "Delete a customer by ID", responses = {
+            @ApiResponse(responseCode = "200", description = "Customer deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Customer not found")
+    })
     public Mono<ResponseEntity<Object>> deleteCustomer(@PathVariable String customerId) {
         String requestID = UUID.randomUUID().toString();
         log.info("Deleting customer with ID: {} and requestID {}", customerId, requestID);
         return customerService.deleteCustomer(customerId, requestID)
-                .then(Mono.just(ResponseEntity.noContent().<Object>build())) // Success: 204 No Content
+                .then(Mono.just(ResponseEntity.ok().header(HttpHeaders.CONTENT_LENGTH, "0").build()))
                 .onErrorResume(e -> {
                     log.error("Error deleting customer with ID: {} - {}", customerId, e.getMessage(), e);
                     return Mono.just(ResponseEntity.status(404).<Object>build()); // Error: 404 Not Found

@@ -1,8 +1,8 @@
 package com.afrisol.CustomerService.controller;
 
-import com.afrisol.CustomerService.dto.CustomerRequestDto;
+import com.afrisol.CustomerService.dto.CustomerRequest;
 import com.afrisol.CustomerService.exception.CustomerNotFoundException;
-import com.afrisol.CustomerService.dto.CustomerResponseDto;
+import com.afrisol.CustomerService.dto.CustomerResponse;
 import com.afrisol.CustomerService.exception.CustomerAlreadyExistsException;
 import com.afrisol.CustomerService.model.Address;
 import com.afrisol.CustomerService.model.Customer;
@@ -35,9 +35,9 @@ public class CustomerControllerTest {
     private WebTestClient webTestClient;
     private Customer customer;
     private Customer customer2;
-    private CustomerRequestDto customerDto;
-    private CustomerResponseDto customerResponseDto;
-    private CustomerResponseDto customerResponseDto2;
+    private CustomerRequest customerDto;
+    private CustomerResponse customerResponseDto;
+    private CustomerResponse customerResponseDto2;
     private String requestID;
 
     @BeforeEach
@@ -57,7 +57,7 @@ public class CustomerControllerTest {
         customer2.setEmail("riche@test.com");
         customer2.setPhone("testPhone2");
 
-        customerDto = new CustomerRequestDto();
+        customerDto = new CustomerRequest();
         customerDto.setFirstName("John");
         customerDto.setLastName("Doe");
         customerDto.setEmail("test@test.com");
@@ -71,14 +71,14 @@ public class CustomerControllerTest {
         address.setState("IL");
         customerDto.setAddress(address);
 
-        customerResponseDto = new CustomerResponseDto();
+        customerResponseDto = new CustomerResponse();
         customerResponseDto.setFirstName("John");
         customerResponseDto.setLastName("Doe");
         customerResponseDto.setCustomerId("testId");
         customerResponseDto.setPhone("testPhone");
 
 
-        customerResponseDto2 = new CustomerResponseDto();
+        customerResponseDto2 = new CustomerResponse();
         customerResponseDto2.setFirstName("Riche");
         customerResponseDto2.setLastName("Smith");
         customerResponseDto2.setCustomerId("testId2");
@@ -99,7 +99,7 @@ public class CustomerControllerTest {
                 .bodyValue(customerDto)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(CustomerResponseDto.class)
+                .expectBody(CustomerResponse.class)
                 .isEqualTo(customerResponseDto);
 
         Mockito.verify(customerService).addCustomer(Mockito.any(), Mockito.any());
@@ -126,7 +126,7 @@ public class CustomerControllerTest {
                 .uri("/api/v1/customers/testId")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(CustomerResponseDto.class);
+                .expectBody(CustomerResponse.class);
         Mockito.verify(customerService).getCustomer(Mockito.any(), Mockito.any());
     }
 
@@ -143,14 +143,14 @@ public class CustomerControllerTest {
 
     @Test
     void getAllCustomers_whenValid_shouldReturn200() {
-        List<CustomerResponseDto> customers = Arrays.asList(customerResponseDto, customerResponseDto2);
+        List<CustomerResponse> customers = Arrays.asList(customerResponseDto, customerResponseDto2);
         when(customerService.getAllCustomers(Mockito.any()))
                 .thenReturn(Flux.fromIterable(customers));
         webTestClient.get()
                 .uri("/api/v1/customers")
                 .exchange()
                 .expectStatus().isOk()
-                .expectBodyList(CustomerResponseDto.class);
+                .expectBodyList(CustomerResponse.class);
 
         Mockito.verify(customerService).getAllCustomers(Mockito.any());
 
@@ -168,7 +168,7 @@ public class CustomerControllerTest {
                 .bodyValue(customerDto)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(CustomerResponseDto.class)
+                .expectBody(CustomerResponse.class)
                 .isEqualTo(customerResponseDto);
 
         Mockito.verify(customerService).updateCustomer(Mockito.any(), Mockito.any(), Mockito.any());
