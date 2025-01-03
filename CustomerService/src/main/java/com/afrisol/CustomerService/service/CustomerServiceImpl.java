@@ -1,7 +1,7 @@
 package com.afrisol.CustomerService.service;
 
-import com.afrisol.CustomerService.dto.CustomerRequestDto;
-import com.afrisol.CustomerService.dto.CustomerResponseDto;
+import com.afrisol.CustomerService.dto.CustomerRequest;
+import com.afrisol.CustomerService.dto.CustomerResponse;
 import com.afrisol.CustomerService.exception.CustomException;
 import com.afrisol.CustomerService.exception.CustomerAlreadyExistsException;
 import com.afrisol.CustomerService.exception.CustomerNotFoundException;
@@ -10,7 +10,6 @@ import com.afrisol.CustomerService.repository.CustomerRepository;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.web.reactive.error.DefaultErrorAttributes;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,23 +28,23 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Mono<CustomerResponseDto> addCustomer(CustomerRequestDto customerDto, String requestID) {
-        if (customerDto == null) {
-            return Mono.error(new IllegalArgumentException("CustomerRequestDto cannot be null"));
+    public Mono<CustomerResponse> addCustomer(CustomerRequest customerRequest, String requestID) {
+        if (customerRequest == null) {
+            return Mono.error(new IllegalArgumentException("CustomerRequest cannot be null"));
         }
-        return customerRepository.existsByEmail (customerDto.getEmail())
+        return customerRepository.findByPhone(customerRequest.getPhone())
                 .flatMap(exists -> {
-                    if (exists) {
+                    if (exists != null) {
                         return Mono.error(new CustomerAlreadyExistsException("Customer already exists"));
                     }
                     return  customerRepository.save(Customer.builder()
-                            .address(customerDto.getAddress())
-                            .email(customerDto.getEmail())
-                            .phone(customerDto.getPhone())
-                            .lastName(customerDto.getLastName())
-                            .firstName(customerDto.getFirstName())
-                            .dateOfBirth(customerDto.getDateOfBirth())
-                            .income(customerDto.getIncome())
+                            .address(customerRequest.getAddress())
+                            .email(customerRequest.getEmail())
+                            .phone(customerRequest.getPhone())
+                            .lastName(customerRequest.getLastName())
+                            .firstName(customerRequest.getFirstName())
+                            .dateOfBirth(customerRequest.getDateOfBirth())
+                            .income(customerRequest.getIncome())
                             .build())
                       .doOnNext(savedCustomer ->
                             log.info("Successfully added customer with ID: {} with requestID {}", savedCustomer.getCustomerId(),requestID)
@@ -54,13 +53,12 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Mono<CustomerResponseDto> getCustomer(String email, String requestID) {
-        if (email == null || email.isEmpty()) {
-            return Mono.error(new CustomException(HttpStatus.BAD_REQUEST,"Email cannot be null"));
+    public Mono<CustomerResponse> getCustomer(String phone, String requestID) {
+        if (phone == null || phone.isEmpty()) {
+            return Mono.error(new CustomException(HttpStatus.BAD_REQUEST,"Phone cannot be null"));
         }
-        log.info("Searching for customer with email: {}", email);
-        email = email.toLowerCase();
-        return customerRepository.findByEmail(email)
+        log.info("Searching for customer with phoneNumber: {}", phone);
+        return customerRepository.findByPhone(phone)
                 .doOnNext(customer -> log.info("Successfully retrieved customer with ID: {} with requestID {}", customer.getCustomerId(), requestID))
                 .map(this::mapToCustomerResponseDto)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Customer not found")))
@@ -73,12 +71,12 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Flux<CustomerResponseDto> getAllCustomers(String requestID) {
+    public Flux<CustomerResponse> getAllCustomers(String requestID) {
         return customerRepository.findAll().map(this::mapToCustomerResponseDto);
     }
 
     @Override
-    public Mono<CustomerResponseDto> updateCustomer(@Valid CustomerRequestDto customerDto, String customerId, String requestID) {
+    public Mono<CustomerResponse> updateCustomer(@Valid CustomerRequest customerDto, String customerId, String requestID) {
         log.info("Updating customer with ID: {} Request ID {}", customerId, requestID);
         if (customerDto == null || customerDto.getFirstName() == null || customerDto.getFirstName().isEmpty()) {
             return Mono.error(new IllegalArgumentException("Invalid customer data"));
@@ -114,8 +112,8 @@ public class CustomerServiceImpl implements CustomerService {
                 .doOnSuccess(unused -> log.info("Successfully deleted customer with ID: {} request ID {}", customerId, requestID));
     }
 
-    private CustomerResponseDto mapToCustomerResponseDto(Customer customer) {
-        return CustomerResponseDto.builder()
+    private CustomerResponse mapToCustomerResponseDto(Customer customer) {
+        return CustomerResponse.builder()
                 .customerId(customer.getCustomerId())
                 .firstName(customer.getFirstName())
                 .lastName(customer.getLastName())

@@ -1,7 +1,7 @@
 package com.afrisol.CustomerService.controller;
 
-import com.afrisol.CustomerService.dto.CustomerRequestDto;
-import com.afrisol.CustomerService.dto.CustomerResponseDto;
+import com.afrisol.CustomerService.dto.CustomerRequest;
+import com.afrisol.CustomerService.dto.CustomerResponse;
 import com.afrisol.CustomerService.service.CustomerService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -25,23 +25,23 @@ public class CustomerController {
     }
 
     @PostMapping
-    public Mono<ResponseEntity<CustomerResponseDto>> addCustomer(@RequestBody @Valid CustomerRequestDto customerDto) {
+    public Mono<ResponseEntity<CustomerResponse>> addCustomer(@RequestBody @Valid CustomerRequest customerRequest) {
         String requestID = UUID.randomUUID().toString();
-        log.info("Adding customer with phone : {} and requestID {}", customerDto.getPhone(), requestID);
-        return customerService.addCustomer(customerDto, requestID)
+        log.info("Adding customer with phone : {} and requestID {}", customerRequest.getPhone(), requestID);
+        return customerService.addCustomer(customerRequest, requestID)
                 .map(ResponseEntity::ok);
     }
     @GetMapping
-    public Flux<CustomerResponseDto> getAllCustomers() {
+    public Flux<CustomerResponse> getAllCustomers() {
         String requestID = UUID.randomUUID().toString();
         log.info("Getting all customers : {}", requestID);
         return customerService.getAllCustomers(requestID);
     }
-    @GetMapping("/{email}")
-    public Mono<ResponseEntity<CustomerResponseDto>> getCustomer(@PathVariable  @Valid String email) {
+    @GetMapping("/{phoneNumber}")
+    public Mono<ResponseEntity<CustomerResponse>> getCustomer(@PathVariable  @Valid String phoneNumber) {
         String requestID = UUID.randomUUID().toString();
-        log.info("Getting customer with email  : {} and requestID: {}", email, requestID);
-        return customerService.getCustomer(email, requestID)
+        log.info("Getting customer with email  : {} and requestID: {}", phoneNumber, requestID);
+        return customerService.getCustomer(phoneNumber, requestID)
                 .map(ResponseEntity::ok)
                 .onErrorResume(ResponseStatusException.class, ex -> {
                     log.error("Error: {}", ex.getReason());
@@ -55,12 +55,12 @@ public class CustomerController {
     }
 
     @PutMapping("/{customerId}")
-    public Mono<ResponseEntity<CustomerResponseDto>> updateCustomer(
+    public Mono<ResponseEntity<CustomerResponse>> updateCustomer(
             @PathVariable String customerId,
-            @RequestBody @Valid CustomerRequestDto customerDto) {
+            @RequestBody @Valid CustomerRequest customerRequest) {
         String requestID = UUID.randomUUID().toString();
         log.info("Updating customer with ID: {} and requestID {}", customerId, requestID);
-        return customerService.updateCustomer(customerDto, customerId, requestID)
+        return customerService.updateCustomer(customerRequest, customerId, requestID)
                 .map(ResponseEntity::ok)
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }

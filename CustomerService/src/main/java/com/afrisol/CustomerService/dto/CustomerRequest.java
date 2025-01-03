@@ -8,11 +8,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CustomerRequestDto {
+public class CustomerRequest {
     private String firstName;
     private String lastName;
     private String email;
@@ -20,5 +21,5 @@ public class CustomerRequestDto {
     private Address address;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy")
     private LocalDate dateOfBirth;
-    private Double income;
+    private double income;
 }

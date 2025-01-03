@@ -22,7 +22,6 @@ import java.util.UUID;
 public class Customer {
     @Id
     private  String id;
-
     @Builder.Default
     private String customerId = UUID.randomUUID().toString();
     @NotBlank(message = "firstName is mandatory")
