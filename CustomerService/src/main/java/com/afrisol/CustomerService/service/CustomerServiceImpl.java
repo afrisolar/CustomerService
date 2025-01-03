@@ -32,24 +32,29 @@ public class CustomerServiceImpl implements CustomerService {
         if (customerRequest == null) {
             return Mono.error(new IllegalArgumentException("CustomerRequest cannot be null"));
         }
+
         return customerRepository.findByPhone(customerRequest.getPhone())
-                .flatMap(exists -> {
-                    if (exists != null) {
-                        return Mono.error(new CustomerAlreadyExistsException("Customer already exists"));
-                    }
-                    return  customerRepository.save(Customer.builder()
-                            .address(customerRequest.getAddress())
-                            .email(customerRequest.getEmail())
-                            .phone(customerRequest.getPhone())
-                            .lastName(customerRequest.getLastName())
-                            .firstName(customerRequest.getFirstName())
-                            .dateOfBirth(customerRequest.getDateOfBirth())
-                            .income(customerRequest.getIncome())
-                            .build())
-                      .doOnNext(savedCustomer ->
-                            log.info("Successfully added customer with ID: {} with requestID {}", savedCustomer.getCustomerId(),requestID)
-                    ).map(this::mapToCustomerResponseDto);
-                });
+                .flatMap(existingCustomer ->
+                        Mono.error(new CustomerAlreadyExistsException("Customer already exists"))
+                )
+                .switchIfEmpty(
+                        customerRepository.save(Customer.builder()
+                                        .address(customerRequest.getAddress())
+                                        .email(customerRequest.getEmail())
+                                        .phone(customerRequest.getPhone())
+                                        .lastName(customerRequest.getLastName())
+                                        .firstName(customerRequest.getFirstName())
+                                        .dateOfBirth(customerRequest.getDateOfBirth())
+                                        .income(customerRequest.getIncome())
+                                        .build()
+                                )
+                                .doOnNext(savedCustomer ->
+                                        log.info("Successfully added customer with ID: {} and requestID: {}",
+                                                savedCustomer.getCustomerId(), requestID)
+                                )
+                                .map(this::mapToCustomerResponseDto) // Map saved Customer to CustomerResponse
+                )
+                .cast(CustomerResponse.class);
     }
 
     @Override
@@ -78,10 +83,10 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Mono<CustomerResponse> updateCustomer(@Valid CustomerRequest customerDto, String customerId, String requestID) {
         log.info("Updating customer with ID: {} Request ID {}", customerId, requestID);
-        if (customerDto == null || customerDto.getFirstName() == null || customerDto.getFirstName().isEmpty()) {
+        if (customerDto == null || customerDto.getPhone() == null || customerDto.getFirstName().isEmpty()) {
             return Mono.error(new IllegalArgumentException("Invalid customer data"));
         }
-        return customerRepository.findById(customerId)
+        return customerRepository.findByCustomerId(customerId)
                 .switchIfEmpty(Mono.error(new CustomerNotFoundException("Customer not found with ID: " + customerId)))
                 .flatMap(existingCustomer -> {
                     existingCustomer.setFirstName(customerDto.getFirstName());
@@ -106,7 +111,7 @@ public class CustomerServiceImpl implements CustomerService {
             return Mono.error(new IllegalArgumentException("Invalid customer data"));
         }
         log.info("Deleting customer with ID: {}", customerId);
-        return customerRepository.findById(customerId)
+        return customerRepository.findByCustomerId(customerId)
                 .switchIfEmpty(Mono.error(new CustomerNotFoundException("Customer not found with ID: " + customerId)))
                 .flatMap(customerRepository::delete)
                 .doOnSuccess(unused -> log.info("Successfully deleted customer with ID: {} request ID {}", customerId, requestID));

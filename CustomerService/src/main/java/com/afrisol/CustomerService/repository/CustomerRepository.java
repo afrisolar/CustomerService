@@ -11,4 +11,5 @@ public interface CustomerRepository  extends ReactiveCrudRepository<Customer,Str
     Mono<Boolean> existsByEmail(String email);
     Mono<Customer> findByEmail(String email);
     Mono<Customer> findByPhone( String phone);
+    Mono<Customer> findByCustomerId(String customerId);
 }
