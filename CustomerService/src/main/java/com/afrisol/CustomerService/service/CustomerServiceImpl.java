@@ -10,6 +10,9 @@ import com.afrisol.CustomerService.repository.CustomerRepository;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.querydsl.QPageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -76,8 +79,10 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public Flux<CustomerResponse> getAllCustomers(String requestID) {
-        return customerRepository.findAll().map(this::mapToCustomerResponseDto);
+    public Flux<CustomerResponse> getAllCustomers(int page, int size, String requestID) {
+        Pageable pageable = PageRequest.of(page, size);
+        return customerRepository.findAllBy(pageable)
+                .map(this::mapToCustomerResponseDto);
     }
 
     @Override

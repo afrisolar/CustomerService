@@ -49,10 +49,14 @@ public class CustomerController {
     }
 
     @GetMapping
-    public Flux<CustomerResponse> getAllCustomers() {
+    public Flux<CustomerResponse> getAllCustomers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+
+    ) {
         String requestID = UUID.randomUUID().toString();
         log.info("Getting all customers : {}", requestID);
-        return customerService.getAllCustomers(requestID);
+        return customerService.getAllCustomers(page, size,requestID);
     }
     @GetMapping("/{phoneNumber}")
     public Mono<ResponseEntity<CustomerResponse>> getCustomer(@PathVariable  @Valid String phoneNumber) {
